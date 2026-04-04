@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>명단 관리</title>
+    <style>
+        :root { --primary: #4A90E2; --danger: #e74c3c; --bg: #F2F5F9; }
+        body { font-family: sans-serif; padding: 20px; background: var(--bg); text-align: center; }
+        .card { background: white; padding: 25px; border-radius: 20px; max-width: 480px; margin: 15px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left; }
+        h2 { font-size: 1.1rem; margin-top: 0; color: #2D3436; display: flex; align-items: center; gap: 8px; }
+        input { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #E0E6ED; box-sizing: border-box; font-size: 0.95rem; }
+        .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-danger { background: var(--danger); margin-top: 10px; }
+        .student-item { display: flex; justify-content: space-between; padding: 14px; border-bottom: 1px solid #F1F3F5; align-items: center; }
+        .student-item:last-child { border-bottom: none; }
+        .btn-del { background: #FFE5E5; color: var(--danger); border: none; border-radius: 8px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:100; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <h2 style="font-size: 1.5rem;">⚙️ 관리자 인증</h2>
+        <input type="password" id="admin-pw" style="width:220px; text-align:center; background:#F8F9FA;" placeholder="비밀번호">
+        <button class="btn-main" style="width:240px; margin-top:15px;" onclick="verify()">관리자 접속</button>
+    </div>
+
+    <div id="content" style="display:none;">
+        <div class="card">
+            <h2>📊 데이터 내보내기</h2>
+            <button class="btn-main" style="background:#27ae60;" onclick="exportCSV()">📥 출석 기록 엑셀(CSV) 다운로드</button>
+        </div>
+        <div class="card">
+            <h2>🧹 특정 날짜 기록 초기화</h2>
+            <input type="date" id="del-date">
+            <button class="btn-main btn-danger" onclick="delByDate()">해당 날짜 기록 전체 삭제</button>
+        </div>
+        <div class="card">
+            <h2>👤 학생 명단 추가</h2>
+            <input type="text" id="name" placeholder="학생 이름">
+            <input type="text" id="teacher" placeholder="담당 선생님">
+            <button class="btn-main" style="margin-top:10px;" onclick="add()">명단에 추가하기</button>
+            <div id="list" style="margin-top:20px; background: #F8F9FA; border-radius: 12px; padding: 5px;"></div>
+        </div>
+        <br><a href="index.html" style="color: #A4B0BE; text-decoration: none; font-weight: bold;">← 메인 현황판으로 돌아가기</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 1. Supabase 연결 설정 (URL과 KEY를 입력하세요)
+        const supabaseUrl = 'https://tdlefyjokqpjubdvqdnr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbGVmeWpva3FwanViZHZxZG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTgyNDgsImV4cCI6MjA5MDg3NDI0OH0.cJ9E_9afLyUiuWa3TD9pubq2FadcN5_DVFDu_77zyZ4';
+        const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 2. 관리자 비밀번호 (원하는 4자리로 변경 가능)
+        const ADMIN_PASSWORD = "0704"; 
+
+        document.getElementById('admin-pw').addEventListener('keyup', (e) => { if(e.key === 'Enter') verify(); });
+        ['name', 'teacher'].forEach(id => document.getElementById(id).addEventListener('keyup', (e) => { if(e.key === 'Enter') add(); }));
+
+        // 관리자 로그인
+        function verify() {
+            const inputPw = document.getElementById('admin-pw').value;
+            if (inputPw === ADMIN_PASSWORD) { 
+                document.getElementById('login-overlay').style.display='none'; 
+                document.getElementById('content').style.display='block'; 
+                load(); 
+            } else {
+                alert('비밀번호가 틀렸습니다.');
+            }
+        }
+
+        // 날짜별 기록 삭제
+        async function delByDate() {
+            const date = document.getElementById('del-date').value;
+            if (date && confirm(`${date}의 모든 출석 기록을 삭제할까요?`)) { 
+                const { error } = await db.from('attendance').delete().eq('date', date);
+                if (!error) alert('삭제되었습니다.'); 
+                else alert('오류가 발생했습니다.');
+            }
+        }
+
+        // 명단 불러오기
+        async function load() {
+            const { data, error } = await db.from('students').select('*').order('grade_class').order('name');
+            if (error) return console.error(error);
+            
+            document.getElementById('list').innerHTML = data.map(s => 
+                `<div class="student-item"><span><strong>${s.name}</strong> <small style="color:#7f8c8d;">${s.grade_class}</small></span><button class="btn-del" onclick="del(${s.id})">삭제</button></div>`
+            ).join('');
+        }
+
+        // 학생 추가
+        async function add() {
+            const name = document.getElementById('name').value;
+            const teacher = document.getElementById('teacher').value;
+            
+            if(name && teacher) { 
+                const { error } = await db.from('students').insert([{ name: name, grade_class: teacher }]);
+                if (!error) {
+                    document.getElementById('name').value = ''; 
+                    load(); 
+                } else alert('추가 실패!');
+            }
+        }
+
+        // 학생 삭제
+        async function del(id) { 
+            if(confirm('이 학생을 명단에서 삭제할까요?')) { 
+                await db.from('students').delete().eq('id', id);
+                load(); 
+            } 
+        }
+
+        // 엑셀 다운로드
+        async function exportCSV() {
+            const { data: students } = await db.from('students').select('*');
+            const { data: attendance } = await db.from('attendance').select('*').order('date');
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            csvContent += "날짜,반(선생님),이름,상태\n";
+
+            attendance.forEach(record => {
+                const student = students.find(s => s.id === record.student_id);
+                if (student) csvContent += `${record.date},${student.grade_class},${student.name},${record.status}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "청소년부_출석기록.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

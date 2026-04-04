@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>출석 기록부</title>
+    <style>
+        :root { --primary: #4A90E2; --present: #2ecc71; --late: #f1c40f; --absent: #e74c3c; --bg: #F2F5F9; }
+        body { font-family: 'Pretendard', sans-serif; margin: 0; background: var(--bg); padding-bottom: 100px; }
+        header { background: white; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 10px rgba(0,0,0,0.03); position: sticky; top:0; z-index:10; }
+        header h1 { font-size: 1.1rem; margin: 0; font-weight: 800; }
+        
+        .date-picker { padding: 20px; text-align: center; }
+        input[type="date"] { padding: 12px; border-radius: 14px; border: 1px solid #E0E6ED; width: 100%; box-sizing: border-box; font-size: 0.95rem; }
+
+        .tab-container { display: flex; overflow-x: auto; padding: 10px 20px; gap: 10px; background: white; border-bottom: 1px solid #eee; }
+        .tab-btn { padding: 10px 18px; border-radius: 14px; border: 1px solid #F1F3F5; white-space: nowrap; background: #F8F9FA; cursor: pointer; color: #A4B0BE; font-weight: 700; transition: 0.2s; }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(74,144,226,0.2); }
+
+        .list { padding: 20px; display: grid; gap: 16px; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,0.8); }
+        .card.locked { opacity: 0.5; filter: grayscale(1); }
+        .card strong { font-size: 1.1rem; color: #2D3436; }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .btn { padding: 15px 0; border: none; border-radius: 12px; font-weight: 800; font-size: 0.9rem; background: #F1F3F5; color: #A4B0BE; transition: 0.2s; }
+        .btn.active { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .present.active { background: var(--present); }
+        .late.active { background: var(--late); }
+        .absent.active { background: var(--absent); }
+
+        .footer { position: fixed; bottom: 0; width: 100%; background: white; padding: 20px; box-sizing: border-box; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); }
+        .action-btn { width: 100%; padding: 16px; border-radius: 16px; font-weight: 800; font-size: 1rem; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-save { background: var(--primary); color: white; box-shadow: 0 6px 15px rgba(74, 144, 226, 0.3); }
+        .btn-edit { background: white; color: var(--primary); border: 2.5px solid var(--primary); }
+
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:100; }
+        .overlay-input { padding: 16px; text-align: center; border: 2px solid #F1F3F5; border-radius: 16px; width: 220px; font-size: 1.2rem; margin-bottom: 15px; background: #F8F9FA; font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <h2 style="font-weight: 800;">🔐 선생님 인증</h2>
+        <input type="password" id="pw" class="overlay-input" placeholder="비밀번호 4자리">
+        <button onclick="login()" style="padding:15px 50px; background:var(--primary); color:white; border:none; border-radius:16px; font-weight:bold; font-size:1rem;">확인</button>
+    </div>
+
+    <header><h1>✍️ 출석 기록하기</h1><a href="admin.html" style="text-decoration:none; font-size:1.4rem;">⚙️</a></header>
+    <div class="date-picker"><input type="date" id="date"></div>
+    <div class="tab-container" id="tabs"></div>
+    <div id="list" class="list"></div>
+    <div class="footer" id="footer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://tdlefyjokqpjubdvqdnr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbGVmeWpva3FwanViZHZxZG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTgyNDgsImV4cCI6MjA5MDg3NDI0OH0.cJ9E_9afLyUiuWa3TD9pubq2FadcN5_DVFDu_77zyZ4';
+        const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let students = []; let teacher = ""; let locked = new Set();
+        const dateInput = document.getElementById('date');
+        dateInput.value = new Date().toISOString().split('T')[0];
+        document.getElementById('pw').addEventListener('keyup', (e) => { if(e.key === 'Enter') login(); });
+
+        // 선생님 로그인 비밀번호
+        const TEACHER_PASSWORD = "7357";
+
+        function login() {
+            if (document.getElementById('pw').value === TEACHER_PASSWORD) { 
+                document.getElementById('overlay').style.display='none'; 
+                fetchAll(); 
+            } else alert('비밀번호가 맞지 않습니다.');
+        }
+
+        async function fetchAll() {
+            const selectedDate = dateInput.value;
+            const { data: studentData } = await db.from('students').select('*');
+            const { data: attendanceData } = await db.from('attendance').select('*').eq('date', selectedDate);
+
+            students = studentData.map(student => {
+                const record = attendanceData.find(a => a.student_id === student.id);
+                return { ...student, status: record ? record.status : null };
+            });
+
+            const teachers = [...new Set(students.map(s => s.grade_class))];
+            if (!teacher) teacher = teachers[0] || "";
+            
+            locked.clear();
+            teachers.forEach(t => { if (students.filter(s => s.grade_class === t).some(s => s.status)) locked.add(t); });
+            render();
+        }
+
+        function render() {
+            const teachers = [...new Set(students.map(s => s.grade_class))];
+            document.getElementById('tabs').innerHTML = teachers.map(t => `<button class="tab-btn ${t===teacher?'active':''}" onclick="teacher='${t}';render()">${t.replace(' 선생님','')}</button>`).join('');
+            
+            const isLocked = locked.has(teacher);
+            const filtered = students.filter(s => s.grade_class === teacher);
+            
+            document.getElementById('list').innerHTML = filtered.map(s => `
+                <div class="card ${isLocked ? 'locked' : ''}">
+                    <strong>${s.name}</strong>
+                    <div class="btn-group">
+                        <button class="btn present ${s.status==='출석'?'active':''}" ${isLocked?'disabled':''} onclick="select(${s.id},'출석')">출석</button>
+                        <button class="btn late ${s.status==='지각'?'active' :''}" ${isLocked?'disabled':''} onclick="select(${s.id},'지각')">지각</button>
+                        <button class="btn absent ${s.status==='결석'?'active':''}" ${isLocked?'disabled':''} onclick="select(${s.id},'결석')">결석</button>
+                    </div>
+                </div>`).join('');
+                
+            document.getElementById('footer').innerHTML = isLocked 
+                ? `<button class="action-btn btn-edit" onclick="locked.delete(teacher);render()">✏️ ${teacher.replace(' 선생님','')} 반 수정하기</button>`
+                : `<button class="action-btn btn-save" onclick="saveAll()">📥 ${teacher.replace(' 선생님','')} 반 전체 저장</button>`;
+        }
+
+        function select(id, status) { 
+            const student = students.find(x => x.id === id);
+            if (student) student.status = status; 
+            render(); 
+        }
+
+        async function saveAll() {
+            const filtered = students.filter(s => s.grade_class === teacher && s.status);
+            if (filtered.length === 0) return alert('체크된 인원이 없습니다.');
+            
+            const selectedDate = dateInput.value;
+            const studentIds = filtered.map(s => s.id);
+            
+            // 데이터 덮어쓰기를 위해 기존 기록 삭제 후 추가
+            await db.from('attendance').delete().eq('date', selectedDate).in('student_id', studentIds);
+            const insertData = filtered.map(s => ({ student_id: s.id, date: selectedDate, status: s.status }));
+            const { error } = await db.from('attendance').insert(insertData);
+            
+            if (!error) { 
+                alert('저장되었습니다!'); 
+                locked.add(teacher); 
+                render(); 
+            } else {
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        dateInput.onchange = () => { locked.clear(); fetchAll(); };
+    </script>
+</body>
+</html>
