@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>출석 기록하기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ink:#1B2420; --ink-soft:#5C6660; --ink-faint:#9AA39C;
+  --paper:#ECEEE9; --surface:#FCFCFA; --surface-2:#F4F5F1;
+  --line:#E3E5DF; --line-strong:#D4D8CF;
+  --present:#2F7A55; --present-bg:#E7F0EA;
+  --late:#A87C24;   --late-bg:#F4ECD6;
+  --absent:#A0494B; --absent-bg:#F3E6E5;
+  --radius:20px; --radius-sm:13px;
+  --shadow:0 1px 2px rgba(27,36,32,.04), 0 10px 30px rgba(27,36,32,.05);
+  --serif:'Fraunces',serif;
+  --sans:'Pretendard Variable','Pretendard',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-tap-highlight-color:transparent;line-height:1.5;padding-bottom:108px}
+.wrap{max-width:520px;margin:0 auto}
+
+header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 14px;position:sticky;top:0;z-index:20;background:rgba(236,238,233,.86);backdrop-filter:blur(12px)}
+.brand{display:flex;flex-direction:column;gap:3px}
+.brand .eyebrow{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.brand h1{margin:0;font-size:1.18rem;font-weight:800;letter-spacing:-.02em}
+.head-actions{display:flex;gap:8px;align-items:center}
+.ghost-btn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-size:1.1rem;cursor:pointer;display:grid;place-items:center;text-decoration:none;transition:transform .15s}
+.ghost-btn:active{transform:scale(.94)}
+
+.controls{padding:6px 20px 4px}
+.date-field input{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:.95rem;font-weight:600}
+
+.tabs{display:flex;overflow-x:auto;gap:6px;padding:12px 20px 4px;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 16px;border-radius:11px;border:1px solid transparent;background:transparent;white-space:nowrap;flex-shrink:0;font-size:.9rem;color:var(--ink-faint);font-weight:700;cursor:pointer;font-family:inherit;transition:.18s;display:flex;align-items:center;gap:6px}
+.tab.active{color:var(--ink);background:var(--surface);border-color:var(--line);box-shadow:var(--shadow)}
+.tab .dot{width:6px;height:6px;border-radius:50%;background:var(--present)}
+
+.meta{display:flex;justify-content:space-between;align-items:center;padding:10px 24px 2px}
+.meta .count{font-size:.82rem;color:var(--ink-soft);font-weight:600}
+.meta .count b{color:var(--ink);font-variant-numeric:tabular-nums}
+.meta .lock{font-size:.78rem;color:var(--present);font-weight:700;display:none;align-items:center;gap:4px}
+.meta .lock.on{display:inline-flex}
+
+.list{padding:8px 16px 24px;display:grid;gap:11px}
+.card{background:var(--surface);border:1px solid var(--line);padding:18px;border-radius:var(--radius-sm);box-shadow:var(--shadow);transition:opacity .2s}
+.card.locked{opacity:.62}
+.card .name{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
+.btn-group{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+.seg{padding:14px 0;border:1px solid var(--line);border-radius:11px;font-weight:700;font-size:.9rem;background:var(--surface-2);color:var(--ink-faint);cursor:pointer;font-family:inherit;transition:.16s;-webkit-user-select:none;user-select:none}
+.seg:disabled{cursor:default}
+.seg.present.on{background:var(--present);border-color:var(--present);color:#fff}
+.seg.late.on{background:var(--late);border-color:var(--late);color:#fff}
+.seg.absent.on{background:var(--absent);border-color:var(--absent);color:#fff}
+.seg:not(:disabled):active{transform:scale(.97)}
+
+/* Footer */
+.footer{position:fixed;bottom:0;left:0;width:100%;background:rgba(252,252,250,.9);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:16px 20px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(27,36,32,.05)}
+.footer .inner{max-width:520px;margin:0 auto}
+.action-btn{width:100%;padding:17px;border-radius:15px;font-weight:800;font-size:1rem;border:none;cursor:pointer;font-family:inherit;letter-spacing:-.01em;transition:transform .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.action-btn:active{transform:scale(.99)}
+.action-btn[disabled]{opacity:.55;cursor:default}
+.btn-save{background:var(--ink);color:#fff}
+.btn-edit{background:var(--surface);color:var(--ink);border:1.5px solid var(--line-strong)}
+
+/* Skeleton */
+.sk{background:linear-gradient(90deg,var(--surface-2) 25%,#EDEEE9 37%,var(--surface-2) 63%);background-size:400% 100%;animation:sh 1.3s ease infinite;border-radius:var(--radius-sm);height:108px}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+.state{margin:8px 16px;padding:40px 24px;text-align:center;background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius);color:var(--ink-soft)}
+.state .ico{font-size:1.8rem;display:block;margin-bottom:10px;opacity:.6}
+.state b{display:block;color:var(--ink);font-size:.98rem;margin-bottom:4px}
+.state small{font-size:.84rem;color:var(--ink-faint)}
+.state button{margin-top:16px;padding:10px 18px;border-radius:11px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font-weight:700;font-family:inherit;cursor:pointer}
+
+/* Overlay (login) */
+#overlay{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:200;padding:24px}
+#overlay .lock-ico{font-size:2rem;margin-bottom:6px}
+#overlay h2{font-weight:800;font-size:1.25rem;letter-spacing:-.02em;margin:0 0 4px}
+#overlay p{color:var(--ink-faint);font-size:.86rem;margin:0 0 22px}
+.pw{padding:16px;text-align:center;border:1px solid var(--line);border-radius:15px;width:240px;font-size:1.3rem;letter-spacing:.3em;margin-bottom:12px;background:var(--surface);font-weight:700;font-family:inherit}
+.pw:focus{outline:2px solid var(--ink);outline-offset:1px}
+.login-btn{padding:15px 0;width:240px;background:var(--ink);color:#fff;border:none;border-radius:15px;font-weight:800;font-size:1rem;cursor:pointer;font-family:inherit}
+
+/* Toast */
+#toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:13px 20px;border-radius:13px;font-size:.9rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:.3s;z-index:300;max-width:88%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--absent)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="overlay">
+  <div class="lock-ico">🔒</div>
+  <h2>선생님 인증</h2>
+  <p>비밀번호 4자리를 입력해 주세요</p>
+  <input type="password" id="pw" class="pw" inputmode="numeric" placeholder="••••" maxlength="8">
+  <button class="login-btn" id="loginBtn">확인</button>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="eyebrow">Check-in</span><h1>출석 기록</h1></div>
+    <div class="head-actions">
+      <a href="index.html" class="ghost-btn" title="현황판">📋</a>
+      <a href="admin.html" class="ghost-btn" title="관리자">⚙️</a>
+    </div>
+  </header>
+
+  <div class="controls"><div class="date-field"><input type="date" id="date"></div></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="meta">
+    <span class="count" id="count"></span>
+    <span class="lock" id="lockTag">✓ 저장 완료됨</span>
+  </div>
+  <div id="list" class="list"></div>
+</div>
+
+<div class="footer"><div class="inner" id="footer"></div></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseUrl = 'https://tdlefyjokqpjubdvqdnr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbGVmeWpva3FwanViZHZxZG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTgyNDgsImV4cCI6MjA5MDg3NDI0OH0.cJ9E_9afLyUiuWa3TD9pubq2FadcN5_DVFDu_77zyZ4';
+const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+const TEACHER_PASSWORD = "7357";
+
+const esc = (s)=>String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = (id)=>document.getElementById(id);
+
+let students=[], teacher="", locked=new Set(), loading=false;
+const dateInput=$('date');
+dateInput.value=new Date().toISOString().split('T')[0];
+
+let toastTimer;
+function toast(msg,type){
+  const t=$('toast'); t.textContent=msg; t.className='show'+(type==='err'?' err':'');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='',2200);
+}
+
+/* ---- Login with session persistence ---- */
+function login(){
+  if($('pw').value===TEACHER_PASSWORD){
+    try{ sessionStorage.setItem('teacher_auth','1'); }catch(e){}
+    $('overlay').style.display='none';
+    fetchAll();
+  }else{
+    toast('비밀번호가 맞지 않습니다','err');
+    $('pw').value=''; $('pw').focus();
+  }
+}
+$('loginBtn').onclick=login;
+$('pw').addEventListener('keyup',e=>{ if(e.key==='Enter') login(); });
+(function autoLogin(){
+  let ok=false; try{ ok=sessionStorage.getItem('teacher_auth')==='1'; }catch(e){}
+  if(ok){ $('overlay').style.display='none'; fetchAll(); }
+  else $('pw').focus();
+})();
+
+function fmtCount(){
+  const filtered=students.filter(s=>s.grade_class===teacher);
+  const done=filtered.filter(s=>s.status).length;
+  return `<b>${done}</b> / ${filtered.length}명 체크됨`;
+}
+
+function showSkeleton(){
+  $('list').innerHTML=Array.from({length:3}).map(()=>'<div class="sk"></div>').join('');
+}
+function showState(ico,title,desc,retry){
+  $('tabs').innerHTML=''; $('count').textContent=''; $('footer').innerHTML='';
+  $('list').innerHTML=`<div class="state"><span class="ico">${ico}</span><b>${title}</b><small>${desc}</small>${retry?'<br><button id="retry">다시 시도</button>':''}</div>`;
+  if(retry) $('retry').onclick=fetchAll;
+}
+
+async function fetchAll(){
+  if(loading) return; loading=true;
+  if(!students.length) showSkeleton();
+  try{
+    const selectedDate=dateInput.value;
+    const [{data:sd,error:e1},{data:ad,error:e2}]=await Promise.all([
+      db.from('students').select('*'),
+      db.from('attendance').select('*').eq('date',selectedDate)
+    ]);
+    if(e1||e2) throw(e1||e2);
+
+    const recs=ad||[];
+    students=(sd||[]).map(st=>{
+      const r=recs.find(a=>a.student_id===st.id);
+      return {...st,status:r?r.status:null};
+    });
+
+    if(!students.length){
+      showState('🗂️','등록된 학생이 없습니다','관리자 페이지에서 명단을 먼저 추가해 주세요.');
+      return;
+    }
+
+    const teachers=[...new Set(students.map(s=>s.grade_class))];
+    if(!teacher||!teachers.includes(teacher)) teacher=teachers[0]||"";
+    locked.clear();
+    teachers.forEach(t=>{ if(students.filter(s=>s.grade_class===t).some(s=>s.status)) locked.add(t); });
+    render();
+  }catch(err){
+    console.error(err);
+    showState('📡','불러오지 못했습니다','네트워크 연결을 확인하고 다시 시도해 주세요.',true);
+  }finally{ loading=false; }
+}
+
+function render(){
+  const teachers=[...new Set(students.map(s=>s.grade_class))];
+  $('tabs').innerHTML=teachers.map((t,i)=>{
+    const saved=locked.has(t);
+    return `<button class="tab ${t===teacher?'active':''}" data-i="${i}">${saved?'<span class="dot"></span>':''}${esc(t.replace(' 선생님',''))}</button>`;
+  }).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b=>{ b.onclick=()=>{ teacher=teachers[+b.dataset.i]; render(); }; });
+
+  const isLocked=locked.has(teacher);
+  const filtered=students.filter(s=>s.grade_class===teacher);
+
+  $('count').innerHTML=fmtCount();
+  $('lockTag').className='lock'+(isLocked?' on':'');
+
+  $('list').innerHTML=filtered.map(s=>`
+    <div class="card ${isLocked?'locked':''}">
+      <span class="name">${esc(s.name)}</span>
+      <div class="btn-group">
+        <button class="seg present ${s.status==='출석'?'on':''}" ${isLocked?'disabled':''} data-id="${s.id}" data-st="출석">출석</button>
+        <button class="seg late ${s.status==='지각'?'on':''}" ${isLocked?'disabled':''} data-id="${s.id}" data-st="지각">지각</button>
+        <button class="seg absent ${s.status==='결석'?'on':''}" ${isLocked?'disabled':''} data-id="${s.id}" data-st="결석">결석</button>
+      </div>
+    </div>`).join('');
+
+  $('list').querySelectorAll('.seg').forEach(b=>{
+    if(b.disabled) return;
+    b.onclick=()=>select(+b.dataset.id,b.dataset.st);
+  });
+
+  const label=esc(teacher.replace(' 선생님',''));
+  $('footer').innerHTML=isLocked
+    ? `<button class="action-btn btn-edit" id="editBtn">✏️ ${label} 반 수정하기</button>`
+    : `<button class="action-btn btn-save" id="saveBtn">${label} 반 저장하기</button>`;
+  if(isLocked) $('editBtn').onclick=()=>{ locked.delete(teacher); render(); };
+  else $('saveBtn').onclick=saveAll;
+}
+
+function select(id,status){
+  const s=students.find(x=>x.id===id);
+  if(!s) return;
+  s.status = (s.status===status) ? null : status; // 다시 누르면 해제
+  render();
+}
+
+async function saveAll(){
+  const filtered=students.filter(s=>s.grade_class===teacher && s.status);
+  if(!filtered.length) return toast('체크된 인원이 없습니다','err');
+
+  const btn=$('saveBtn'); if(btn){ btn.disabled=true; btn.textContent='저장 중…'; }
+  const selectedDate=dateInput.value;
+  const ids=filtered.map(s=>s.id);
+
+  try{
+    const { error:delErr } = await db.from('attendance').delete().eq('date',selectedDate).in('student_id',ids);
+    if(delErr) throw delErr;
+    const rows=filtered.map(s=>({student_id:s.id,date:selectedDate,status:s.status}));
+    const { error:insErr } = await db.from('attendance').insert(rows);
+    if(insErr) throw insErr;
+    toast('저장되었습니다');
+    locked.add(teacher);
+    render();
+  }catch(err){
+    console.error(err);
+    toast('저장 중 오류가 발생했습니다','err');
+    if(btn){ btn.disabled=false; btn.textContent=esc(teacher.replace(' 선생님',''))+' 반 저장하기'; }
+  }
+}
+
+dateInput.onchange=()=>{ locked.clear(); fetchAll(); };
+</script>
+</body>
+</html>

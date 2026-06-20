@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>명단 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ink:#1B2420; --ink-soft:#5C6660; --ink-faint:#9AA39C;
+  --paper:#ECEEE9; --surface:#FCFCFA; --surface-2:#F4F5F1;
+  --line:#E3E5DF; --line-strong:#D4D8CF;
+  --present:#2F7A55;
+  --absent:#A0494B; --absent-bg:#F3E6E5;
+  --radius:20px; --radius-sm:13px;
+  --shadow:0 1px 2px rgba(27,36,32,.04), 0 10px 30px rgba(27,36,32,.05);
+  --serif:'Fraunces',serif;
+  --sans:'Pretendard Variable','Pretendard',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-tap-highlight-color:transparent;line-height:1.5}
+.wrap{max-width:520px;margin:0 auto;padding:0 0 40px}
+
+header{display:flex;justify-content:space-between;align-items:center;padding:22px 24px 12px}
+.brand{display:flex;flex-direction:column;gap:3px}
+.brand .eyebrow{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.brand h1{margin:0;font-size:1.18rem;font-weight:800;letter-spacing:-.02em}
+.ghost-btn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-size:1.1rem;cursor:pointer;display:grid;place-items:center;text-decoration:none;transition:transform .15s}
+.ghost-btn:active{transform:scale(.94)}
+
+.card{background:var(--surface);border:1px solid var(--line);padding:22px;border-radius:var(--radius);margin:14px 16px;box-shadow:var(--shadow)}
+.card h2{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 4px;font-weight:700}
+.card .sub{font-size:.84rem;color:var(--ink-soft);margin:0 0 16px}
+
+input,select{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:.95rem;font-weight:600}
+input:focus,select:focus{outline:2px solid var(--ink);outline-offset:1px}
+.row{display:flex;gap:10px;margin-bottom:10px}
+.row input{flex:1}
+
+.btn{width:100%;padding:15px;border:none;border-radius:13px;font-weight:800;font-size:.95rem;cursor:pointer;font-family:inherit;letter-spacing:-.01em;transition:transform .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.99)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-line{background:var(--surface);color:var(--ink);border:1.5px solid var(--line-strong)}
+.btn-danger{background:var(--absent);color:#fff}
+
+/* roster */
+.roster{margin-top:18px;border-top:1px solid var(--line);padding-top:6px}
+.r-group{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;padding:14px 2px 6px}
+.r-item{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line)}
+.r-item:last-child{border-bottom:none}
+.r-item .nm{font-weight:700;font-size:.98rem}
+.r-item .tc{font-size:.78rem;color:var(--ink-faint);margin-left:7px;font-weight:600}
+.r-actions{display:flex;gap:6px}
+.mini{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 11px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink-soft);transition:.15s}
+.mini:active{transform:scale(.95)}
+.mini.del{color:var(--absent);border-color:var(--absent-bg);background:var(--absent-bg)}
+
+.state{text-align:center;padding:30px 10px;color:var(--ink-faint);font-size:.88rem}
+.sk{background:linear-gradient(90deg,var(--surface-2) 25%,#EDEEE9 37%,var(--surface-2) 63%);background-size:400% 100%;animation:sh 1.3s ease infinite;border-radius:11px;height:44px;margin:8px 0}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+.back{display:block;text-align:center;color:var(--ink-faint);text-decoration:none;font-weight:700;font-size:.88rem;margin-top:24px}
+
+/* overlay */
+#overlay{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:200;padding:24px}
+#overlay .ico{font-size:2rem;margin-bottom:6px}
+#overlay h2{font-weight:800;font-size:1.25rem;letter-spacing:-.02em;margin:0 0 4px}
+#overlay p{color:var(--ink-faint);font-size:.86rem;margin:0 0 22px}
+.pw{padding:16px;text-align:center;border:1px solid var(--line);border-radius:15px;width:240px;font-size:1.3rem;letter-spacing:.3em;margin-bottom:12px;background:var(--surface);font-weight:700;font-family:inherit}
+.pw:focus{outline:2px solid var(--ink);outline-offset:1px}
+.login-btn{padding:15px 0;width:240px;background:var(--ink);color:#fff;border:none;border-radius:15px;font-weight:800;font-size:1rem;cursor:pointer;font-family:inherit}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:13px 20px;border-radius:13px;font-size:.9rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:.3s;z-index:300;max-width:88%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--absent)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="overlay">
+  <div class="ico">⚙️</div>
+  <h2>관리자 인증</h2>
+  <p>관리자 비밀번호를 입력해 주세요</p>
+  <input type="password" id="pw" class="pw" inputmode="numeric" placeholder="••••" maxlength="12">
+  <button class="login-btn" id="loginBtn">접속</button>
+</div>
+
+<div class="wrap" id="content" style="display:none">
+  <header>
+    <div class="brand"><span class="eyebrow">Admin</span><h1>명단 관리</h1></div>
+    <a href="index.html" class="ghost-btn" title="현황판">📋</a>
+  </header>
+
+  <div class="card">
+    <h2>데이터 내보내기</h2>
+    <p class="sub">전체 출석 기록을 엑셀(CSV)로 저장합니다.</p>
+    <button class="btn btn-dark" id="exportBtn">출석 기록 다운로드</button>
+  </div>
+
+  <div class="card">
+    <h2>기록 초기화</h2>
+    <p class="sub">선택한 날짜의 모든 출석 기록을 삭제합니다.</p>
+    <div class="row"><input type="date" id="del-date"></div>
+    <button class="btn btn-danger" id="delDateBtn">해당 날짜 기록 삭제</button>
+  </div>
+
+  <div class="card">
+    <h2>학생 명단</h2>
+    <p class="sub">이름과 담당 선생님을 입력해 추가하세요.</p>
+    <div class="row">
+      <input type="text" id="name" placeholder="학생 이름">
+      <input type="text" id="teacher" placeholder="담당 선생님">
+    </div>
+    <button class="btn btn-line" id="addBtn">명단에 추가</button>
+    <div class="roster" id="roster"></div>
+  </div>
+
+  <a href="index.html" class="back">← 메인 현황판으로 돌아가기</a>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseUrl='https://tdlefyjokqpjubdvqdnr.supabase.co';
+const supabaseKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbGVmeWpva3FwanViZHZxZG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTgyNDgsImV4cCI6MjA5MDg3NDI0OH0.cJ9E_9afLyUiuWa3TD9pubq2FadcN5_DVFDu_77zyZ4';
+const db=window.supabase.createClient(supabaseUrl,supabaseKey);
+const ADMIN_PASSWORD="0704";
+
+const esc=(s)=>String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=(id)=>document.getElementById(id);
+
+let toastTimer;
+function toast(msg,type){
+  const t=$('toast'); t.textContent=msg; t.className='show'+(type==='err'?' err':'');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='',2200);
+}
+
+/* ---- login ---- */
+function verify(){
+  if($('pw').value===ADMIN_PASSWORD){
+    try{ sessionStorage.setItem('admin_auth','1'); }catch(e){}
+    enter();
+  }else{ toast('비밀번호가 틀렸습니다','err'); $('pw').value=''; $('pw').focus(); }
+}
+function enter(){ $('overlay').style.display='none'; $('content').style.display='block'; load(); }
+$('loginBtn').onclick=verify;
+$('pw').addEventListener('keyup',e=>{ if(e.key==='Enter') verify(); });
+(function(){
+  let ok=false; try{ ok=sessionStorage.getItem('admin_auth')==='1'; }catch(e){}
+  if(ok) enter(); else $('pw').focus();
+})();
+
+['name','teacher'].forEach(id=>$(id).addEventListener('keyup',e=>{ if(e.key==='Enter') add(); }));
+
+/* ---- roster ---- */
+async function load(){
+  $('roster').innerHTML='<div class="sk"></div><div class="sk"></div><div class="sk"></div>';
+  const { data, error }=await db.from('students').select('*').order('grade_class').order('name');
+  if(error){ $('roster').innerHTML='<div class="state">명단을 불러오지 못했습니다.</div>'; return; }
+  if(!data.length){ $('roster').innerHTML='<div class="state">아직 등록된 학생이 없습니다.</div>'; return; }
+
+  const groups={};
+  data.forEach(s=>{ (groups[s.grade_class]=groups[s.grade_class]||[]).push(s); });
+
+  $('roster').innerHTML=Object.keys(groups).map(g=>`
+    <div class="r-group">${esc(g)} · ${groups[g].length}명</div>
+    ${groups[g].map(s=>`
+      <div class="r-item" data-id="${s.id}">
+        <span><span class="nm">${esc(s.name)}</span></span>
+        <span class="r-actions">
+          <button class="mini" data-act="edit" data-id="${s.id}" data-name="${esc(s.name)}" data-class="${esc(s.grade_class)}">수정</button>
+          <button class="mini del" data-act="del" data-id="${s.id}" data-name="${esc(s.name)}">삭제</button>
+        </span>
+      </div>`).join('')}
+  `).join('');
+
+  $('roster').querySelectorAll('.mini').forEach(b=>{
+    b.onclick=()=>{
+      const id=+b.dataset.id;
+      if(b.dataset.act==='del') del(id,b.dataset.name);
+      else edit(id,b.dataset.name,b.dataset.class);
+    };
+  });
+}
+
+async function add(){
+  const name=$('name').value.trim();
+  const teacher=$('teacher').value.trim();
+  if(!name||!teacher) return toast('이름과 선생님을 모두 입력해 주세요','err');
+
+  const btn=$('addBtn'); btn.disabled=true;
+  const { error }=await db.from('students').insert([{name,grade_class:teacher}]);
+  btn.disabled=false;
+  if(error){ toast('추가하지 못했습니다','err'); return; }
+  $('name').value=''; $('name').focus();
+  toast(`${name} 추가됨`);
+  load();
+}
+
+async function edit(id,curName,curClass){
+  const name=prompt('학생 이름',curName);
+  if(name===null) return;
+  const grade_class=prompt('담당 선생님',curClass);
+  if(grade_class===null) return;
+  if(!name.trim()||!grade_class.trim()) return toast('빈 값은 저장할 수 없습니다','err');
+
+  const { error }=await db.from('students').update({name:name.trim(),grade_class:grade_class.trim()}).eq('id',id);
+  if(error){ toast('수정하지 못했습니다','err'); return; }
+  toast('수정되었습니다');
+  load();
+}
+
+async function del(id,name){
+  if(!confirm(`'${name}' 학생을 명단에서 삭제할까요?\n(저장된 출석 기록은 유지됩니다)`)) return;
+  const { error }=await db.from('students').delete().eq('id',id);
+  if(error){ toast('삭제하지 못했습니다','err'); return; }
+  toast('삭제되었습니다');
+  load();
+}
+
+/* ---- delete by date ---- */
+async function delByDate(){
+  const date=$('del-date').value;
+  if(!date) return toast('날짜를 선택해 주세요','err');
+  if(!confirm(`${date}의 모든 출석 기록을 삭제할까요?`)) return;
+  const { error }=await db.from('attendance').delete().eq('date',date);
+  if(error) toast('오류가 발생했습니다','err');
+  else toast('해당 날짜 기록이 삭제되었습니다');
+}
+$('delDateBtn').onclick=delByDate;
+$('addBtn').onclick=add;
+
+/* ---- export CSV ---- */
+async function exportCSV(){
+  const btn=$('exportBtn'); btn.disabled=true; btn.textContent='준비 중…';
+  try{
+    const [{data:students,error:e1},{data:attendance,error:e2}]=await Promise.all([
+      db.from('students').select('*'),
+      db.from('attendance').select('*').order('date')
+    ]);
+    if(e1||e2) throw(e1||e2);
+    if(!attendance || !attendance.length){ toast('내보낼 기록이 없습니다','err'); return; }
+
+    const csvField=(v)=>`"${String(v ?? '').replace(/"/g,'""')}"`;
+    let csv="\uFEFF날짜,반(선생님),이름,상태\n";
+    attendance.forEach(rec=>{
+      const st=students.find(s=>s.id===rec.student_id);
+      if(st) csv+=[rec.date,st.grade_class,st.name,rec.status].map(csvField).join(',')+"\n";
+    });
+
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`청소년부_출석기록_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('다운로드되었습니다');
+  }catch(err){
+    console.error(err); toast('내보내기 중 오류가 발생했습니다','err');
+  }finally{
+    btn.disabled=false; btn.textContent='출석 기록 다운로드';
+  }
+}
+$('exportBtn').onclick=exportCSV;
+</script>
+</body>
+</html>
